@@ -12,12 +12,19 @@ namespace ScaraApp
 {
     public partial class RoboTochMainForm : Form
     {
+        private enum Cmds
+        {
+            CMD_MOVE = 0,
+            CMD_READ_VOLT = 1,
+            CMD_READ_WEIGHT = 2,
+            CMD_MOVE_FORCE = 100
+        };
+
         public RoboTochMainForm()
         {
             InitializeComponent();
-            OptionDlg.OptionData option = OptionDlg.LoadOptionData();
-
-            SerialPort.PortName = option.name;           // "COM8"; // needs to be in the option dialog
+            
+            SerialPort.PortName = "COM8";           // "COM8"; needs to be in the option dialog, but machine it is always COM8
             SerialPort.Open();
             SerialPort.BaudRate = 115200;
            
@@ -34,6 +41,7 @@ namespace ScaraApp
             int zPos    = (int)ZAxisNumUpDwn.Value;
             int gripper = (int)GrprNumBox.Value;
             int speed = (int)SpeedUpDwn.Value;
+            int cmd = (int)Cmds.CMD_MOVE;
 
             /**********************
             data[0] - SAVE button status
@@ -47,8 +55,38 @@ namespace ScaraApp
             data[8] -Acceleration value
             ***************/
 
-            string msg = string.Format("<0, 0, 0, 0, 0, {0}, {1}, {2}, {3}>", zPos, gripper, speed, zAccell);
+            if (GrprForceModeBtn.Checked)
+                cmd = (int)Cmds.CMD_MOVE_FORCE;
+
+            string msg = string.Format("<{0}, 0, 0, 0, 0, {1}, {2}, {3}, {4}>", cmd, zPos, gripper, speed, zAccell);
             SerialPort.Write(msg);
+        }
+
+       
+        private void ReadBtn_Click(object sender, EventArgs e)
+        {
+            char[] charsToTrim = { ' ', '\n', '\t', '<', '>' };
+
+            string msg = string.Format("<{0}, 0, 0, 0, 0, 0, 0, 0, 0>", (int)Cmds.CMD_READ_VOLT);
+            SerialPort.Write(msg);
+
+            string rdVolts = SerialPort.ReadLine();
+
+            msg = string.Format("<{0}, 0, 0, 0, 0, 0, 0, 0, 0>", (int)Cmds.CMD_READ_WEIGHT);
+            SerialPort.Write(msg);
+
+            string rdForce = SerialPort.ReadLine();
+
+            rdVolts = rdVolts.Trim(charsToTrim);
+            rdForce = rdForce.Trim(charsToTrim);
+
+            string[] tok = rdVolts.Split(',');
+            VoltSensor1Text.Text = tok[0];
+            VoltSensor2Text.Text = tok[1];
+
+            tok = rdForce.Split(',');
+            ForceSensor1.Text = tok[0];
+            ForceSensor2.Text = tok[1];
         }
     }
 }
