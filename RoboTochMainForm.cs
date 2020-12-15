@@ -27,6 +27,7 @@ namespace ScaraApp
             SerialPort.PortName = "COM8";           // "COM8"; needs to be in the option dialog, but machine it is always COM8
             SerialPort.Open();
             SerialPort.BaudRate = 115200;
+            SerialPort.ReadTimeout = 5000;
            
         }
 
@@ -60,33 +61,81 @@ namespace ScaraApp
 
             string msg = string.Format("<{0}, 0, 0, 0, 0, {1}, {2}, {3}, {4}>", cmd, zPos, gripper, speed, zAccell);
             SerialPort.Write(msg);
+            System.Threading.Thread.Sleep(1000);
+
+            ReadBtn_Click(sender, e);
         }
 
        
         private void ReadBtn_Click(object sender, EventArgs e)
         {
+            string rdVolts = "";
+            string rdForce = "";
+            string[] tok;
+            int cnt;
             char[] charsToTrim = { ' ', '\n', '\t', '<', '>' };
 
-            string msg = string.Format("<{0}, 0, 0, 0, 0, 0, 0, 0, 0>", (int)Cmds.CMD_READ_VOLT);
-            SerialPort.Write(msg);
+            try
+            {
+                string msg = string.Format("<{0}, 0, 0, 0, 0, 0, 0, 0, 0>", (int)Cmds.CMD_READ_VOLT);
+                SerialPort.Write(msg);
 
-            string rdVolts = SerialPort.ReadLine();
+                for (cnt = 0; cnt < 50; cnt++)
+                {
+                    rdVolts = SerialPort.ReadLine();
+                    if ((rdVolts.Contains('<')) && (rdVolts.Contains('>')))
+                        break;
+                }
 
-            msg = string.Format("<{0}, 0, 0, 0, 0, 0, 0, 0, 0>", (int)Cmds.CMD_READ_WEIGHT);
-            SerialPort.Write(msg);
+                msg = string.Format("<{0}, 0, 0, 0, 0, 0, 0, 0, 0>", (int)Cmds.CMD_READ_WEIGHT);
+                SerialPort.Write(msg);
 
-            string rdForce = SerialPort.ReadLine();
+                for (cnt = 0; cnt < 50; cnt++)
+                {
+                    rdForce = SerialPort.ReadLine();
+                    if ((rdForce.Contains('<')) && (rdForce.Contains('>')))
+                        break;
+                }
+                if (!string.IsNullOrWhiteSpace(rdVolts))
+                {
+                    rdVolts = rdVolts.Trim(charsToTrim);
+                    tok = rdVolts.Split(',');
+                    VoltSensor1Text.Text = tok[0];
+                    VoltSensor2Text.Text = tok[1];
+                    VoltSensorAvg.Text = tok[2];
+                }
+                else
+                {
+                    VoltSensor1Text.Text = " ";
+                    VoltSensor2Text.Text = " ";
+                    VoltSensorAvg.Text = " ";
+                }
 
-            rdVolts = rdVolts.Trim(charsToTrim);
-            rdForce = rdForce.Trim(charsToTrim);
-
-            string[] tok = rdVolts.Split(',');
-            VoltSensor1Text.Text = tok[0];
-            VoltSensor2Text.Text = tok[1];
-
-            tok = rdForce.Split(',');
-            ForceSensor1.Text = tok[0];
-            ForceSensor2.Text = tok[1];
+                if (!string.IsNullOrWhiteSpace(rdForce))
+                {
+                    rdForce = rdForce.Trim(charsToTrim);
+                    tok = rdForce.Split(',');
+                    ForceSensor1.Text = tok[0];
+                    ForceSensor2.Text = tok[1];
+                    ForceSensorAvg.Text = tok[2];
+                }
+                else
+                {
+                    ForceSensor1.Text = " ";
+                    ForceSensor2.Text = " ";
+                    ForceSensorAvg.Text = " ";
+                }
+            }
+            catch (Exception ex)
+            {
+                VoltSensor1Text.Text = " ";
+                VoltSensor2Text.Text = " ";
+                VoltSensorAvg.Text = " ";
+                ForceSensor1.Text = " ";
+                ForceSensor2.Text = " ";
+                ForceSensorAvg.Text = " ";
+                // MessageBox.Show(ex.Message);
+            }
         }
     }
 }
